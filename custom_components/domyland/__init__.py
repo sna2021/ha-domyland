@@ -5,6 +5,7 @@ from __future__ import annotations
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.storage import Store
 
 from .api import DomylandApiClient
 from .const import (
@@ -12,6 +13,8 @@ from .const import (
     CONF_JWT,
     CONF_YANDEX_TOKEN,
     DEFAULT_ENABLE_CAMERAS,
+    STORAGE_KEY,
+    STORAGE_VERSION,
 )
 from .coordinator import DomylandConfigEntry, DomylandCoordinator
 
@@ -29,6 +32,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: DomylandConfigEntry) -> 
     enable_cameras = entry.options.get(CONF_ENABLE_CAMERAS, DEFAULT_ENABLE_CAMERAS)
 
     coordinator = DomylandCoordinator(hass, entry, client, enable_cameras)
+    await coordinator.async_initialize()
     await coordinator.async_config_entry_first_refresh()
 
     entry.runtime_data = coordinator
@@ -41,6 +45,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: DomylandConfigEntry) -> 
 async def async_unload_entry(hass: HomeAssistant, entry: DomylandConfigEntry) -> bool:
     """Выгрузить config entry."""
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: DomylandConfigEntry) -> None:
+    """Удалить личный архив источников вместе с интеграцией."""
+    await Store(
+        hass, STORAGE_VERSION, STORAGE_KEY.format(entry_id=entry.entry_id), private=True
+    ).async_remove()
 
 
 async def _async_update_listener(

@@ -19,6 +19,33 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
+async def async_get_mjpeg_frame(
+    session: aiohttp.ClientSession, url: str
+) -> bytes | None:
+    """Проверить поток настоящим JPEG-кадром, не сохраняя его на диск."""
+    try:
+        async with session.get(
+            url,
+            timeout=aiohttp.ClientTimeout(total=10),
+            allow_redirects=False,
+        ) as resp:
+            if resp.status != 200:
+                return None
+            buffer = bytearray()
+            async for chunk in resp.content.iter_chunked(4096):
+                buffer.extend(chunk)
+                start = buffer.find(b"\xff\xd8")
+                if start != -1:
+                    end = buffer.find(b"\xff\xd9", start + 2)
+                    if end != -1:
+                        return bytes(memoryview(buffer)[start : end + 2])
+                if len(buffer) > 2_000_000:
+                    break
+    except (aiohttp.ClientError, TimeoutError):
+        pass
+    return None
+
+
 class DomylandError(Exception):
     """Общая ошибка API Domyland."""
 
@@ -97,7 +124,7 @@ class DomylandApiClient:
                     data = await resp.json(content_type=None)
                 except (aiohttp.ContentTypeError, ValueError) as err:
                     raise DomylandError(f"Не JSON в ответе {path}: {err}") from err
-        except aiohttp.ClientError as err:
+        except (aiohttp.ClientError, TimeoutError) as err:
             raise DomylandError(f"Сетевая ошибка {method} {path}: {err}") from err
 
         if isinstance(data, dict) and data.get("success") is False:

@@ -30,10 +30,18 @@
     "step": {
       "init": {
         "title": "Domyland settings",
+        "description": "Restore cameras only from your personal JSON backup. Import does not discover devices by arbitrary IDs. Camera URLs are confidential — do not share the backup. Leave the field empty if recovery is not needed.",
         "data": {
-          "enable_cameras": "Create camera entities"
+          "enable_cameras": "Create camera entities",
+          "camera_backup": "Camera backup (JSON)"
+        },
+        "data_description": {
+          "camera_backup": "The JSON must contain building_id and a cameras list. Each camera needs id, title and streamURL; image is optional. The building must be available in your account. URLs are saved only in the integration's local storage, not in its options."
         }
       }
+    },
+    "error": {
+      "invalid_camera_backup": "Could not import cameras. Check the JSON, building access, unique positive IDs and nonempty camera titles. streamURL must use HTTPS without credentials on ujin.tech or mysmartflat.ru or their subdomains; image, if provided, must be a string."
     }
   }
 }

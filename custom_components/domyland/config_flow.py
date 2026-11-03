@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 from collections.abc import Mapping
@@ -16,6 +17,7 @@ from homeassistant.config_entries import (
 )
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.selector import TextSelector, TextSelectorConfig
 
 from .api import DomylandApiClient, DomylandAuthError, DomylandError
 from .const import (
@@ -33,6 +35,7 @@ from .coordinator import DomylandConfigEntry
 _LOGGER = logging.getLogger(__name__)
 
 CONF_TOKEN_INPUT = "token_input"
+CONF_CAMERA_BACKUP = "camera_backup"
 
 # Яндекс-токен формата y0_..., либо вся строка редиректа с #access_token=...
 _TOKEN_RE = re.compile(r"(y[0-3]_[A-Za-z0-9_-]{20,})")
@@ -165,22 +168,43 @@ class DomylandConfigFlow(ConfigFlow, domain=DOMAIN):
 
 
 class DomylandOptionsFlow(OptionsFlow):
-    """Опции: включение/выключение камер."""
+    """Опции камер и восстановление из личной резервной копии."""
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        if user_input is not None:
-            return self.async_create_entry(data=user_input)
-
+        errors: dict[str, str] = {}
         current = self.config_entry.options.get(
             CONF_ENABLE_CAMERAS, DEFAULT_ENABLE_CAMERAS
         )
+        camera_backup = ""
+        if user_input is not None:
+            current = user_input[CONF_ENABLE_CAMERAS]
+            camera_backup = user_input.get(CONF_CAMERA_BACKUP, "")
+            if camera_backup != "":
+                try:
+                    backup = json.loads(camera_backup)
+                    if not isinstance(backup, dict):
+                        raise TypeError
+                    await self.config_entry.runtime_data.async_restore_cameras(
+                        backup["building_id"], backup["cameras"]
+                    )
+                except (ValueError, TypeError, KeyError):
+                    errors[CONF_CAMERA_BACKUP] = "invalid_camera_backup"
+            if not errors:
+                return self.async_create_entry(
+                    data={CONF_ENABLE_CAMERAS: current}
+                )
+
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema(
                 {
                     vol.Required(CONF_ENABLE_CAMERAS, default=current): bool,
+                    vol.Optional(
+                        CONF_CAMERA_BACKUP, default=camera_backup
+                    ): TextSelector(TextSelectorConfig(multiline=True)),
                 }
             ),
+            errors=errors,
         )

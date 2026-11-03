@@ -45,6 +45,10 @@ DEFAULT_ENABLE_CAMERAS = True
 # и чтобы подтягивались новые/убранные двери.
 UPDATE_INTERVAL = timedelta(minutes=5)
 
+# Личный архив известных источников; не содержит токенов авторизации.
+STORAGE_VERSION = 1
+STORAGE_KEY = f"{DOMAIN}.{{entry_id}}.inventory"
+
 # Таймаут HTTP-запросов к API.
 REQUEST_TIMEOUT = 30
 
