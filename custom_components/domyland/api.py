@@ -330,3 +330,22 @@ class DomylandApiClient:
             "GET", f"/news/{news_id}", place_id=place_id, building_id=building_id
         )
         return data["data"]
+
+    async def get_metering_form(
+        self,
+        place_id: int | str,
+        building_id: int | str,
+        group_id: int,
+    ) -> dict[str, Any]:
+        """GET /meteringdata/form?meteringGroupId=N → приборы учёта УК.
+
+        Группы: 1 — вода, 2 — электричество, 3 — отопление. Значения могут
+        быть нулевыми, если УК пока не передаёт показания цифрами.
+        """
+        data = await self._request(
+            "GET",
+            f"/meteringdata/form?meteringGroupId={group_id}",
+            place_id=place_id,
+            building_id=building_id,
+        )
+        return data["data"]

@@ -184,3 +184,33 @@ async def test_news_sensor_uses_news_attribute(make_coordinator, client, refresh
     items = sensor.extra_state_attributes["news"]
     assert items[0]["id"] == 121028
     assert items[0]["title"] == "Новость УК"
+
+
+async def test_electricity_sensor_tariffs(make_coordinator, client, refresh):
+    client.get_metering_form.return_value = {
+        "items": [
+            {
+                "meteringDeviceId": 3001813,
+                "meteringDeviceLabel": "Электричество (пик/ночь)",
+                "meteringDeviceNumber": "021240077100",
+                "meteringDeviceNextCalibrationDate": "07.07.2040",
+                "valueTitle1": "Пик/Т1",
+                "valueTitle2": "Ночь/Т2",
+                "value1": "12.5000",
+                "value2": "3.2500",
+            }
+        ]
+    }
+    coordinator = await make_coordinator()
+    await refresh(coordinator)
+
+    from custom_components.domyland.sensor import DomylandElectricitySensor
+
+    day = DomylandElectricitySensor(coordinator, 11, 3001813, 1)
+    night = DomylandElectricitySensor(coordinator, 11, 3001813, 2)
+    assert day.native_value == 12.5
+    assert night.native_value == 3.25
+    assert day.native_unit_of_measurement == "kWh"
+    assert day.device_class == "energy"
+    assert "Пик/Т1" in day.name
+    assert day.extra_state_attributes["device_number"] == "021240077100"

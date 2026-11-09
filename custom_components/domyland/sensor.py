@@ -11,7 +11,7 @@ from homeassistant.components.sensor import (
     SensorEntity,
     SensorStateClass,
 )
-from homeassistant.const import UnitOfVolume
+from homeassistant.const import UnitOfEnergy, UnitOfVolume
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
@@ -87,6 +87,24 @@ async def async_setup_entry(
             if ("news", building_id, 0) not in known:
                 known.add(("news", building_id, 0))
                 entities.append(DomylandNewsSensor(coordinator, building_id))
+            for item in building.electricity.get("items", []):
+                for tariff in (1, 2):
+                    key = (
+                        "ukmeter",
+                        building_id,
+                        item["meteringDeviceId"] * 10 + tariff,
+                    )
+                    if key in known or not item.get(f"valueTitle{tariff}"):
+                        continue
+                    known.add(key)
+                    entities.append(
+                        DomylandElectricitySensor(
+                            coordinator,
+                            building_id,
+                            item["meteringDeviceId"],
+                            tariff,
+                        )
+                    )
         if entities:
             async_add_entities(entities)
 
@@ -313,3 +331,67 @@ class DomylandNewsSensor(DomylandNotificationsSensor):
     ) -> None:
         super().__init__(coordinator, building_id)
         self._attr_unique_id = f"{DOMAIN}_news_{building_id}"
+
+
+class DomylandElectricitySensor(DomylandBuildingEntity, SensorEntity):
+    """Электросчётчик из кабинета УК (группа 2): тарифы Т1/Т2, кВт·ч.
+
+    Значения могут быть нулевыми, пока УК не передаёт показания цифрами —
+    сенсор оживёт автоматически, когда данные появятся.
+    """
+
+    _attr_device_class = SensorDeviceClass.ENERGY
+    _attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+
+    def __init__(
+        self,
+        coordinator: DomylandCoordinator,
+        building_id: int,
+        device_id: int,
+        tariff: int,
+    ) -> None:
+        super().__init__(coordinator, building_id)
+        self._device_id = device_id
+        self._tariff = tariff
+        self._attr_unique_id = f"{DOMAIN}_ukmeter_{device_id}_t{tariff}"
+
+    @property
+    def _item(self) -> dict[str, Any] | None:
+        building = self._building
+        if building is None:
+            return None
+        for item in building.electricity.get("items", []):
+            if item.get("meteringDeviceId") == self._device_id:
+                return item
+        return None
+
+    @property
+    def available(self) -> bool:
+        return super().available and self._item is not None
+
+    @property
+    def name(self) -> str:
+        item = self._item or {}
+        label = item.get("meteringDeviceLabel") or "Электричество"
+        tariff_title = item.get(f"valueTitle{self._tariff}") or f"Т{self._tariff}"
+        return f"{label} · {tariff_title}"
+
+    @property
+    def native_value(self) -> float | None:
+        item = self._item
+        if not item:
+            return None
+        try:
+            return float(item.get(f"value{self._tariff}"))
+        except (TypeError, ValueError):
+            return None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        item = self._item or {}
+        return {
+            "device_number": item.get("meteringDeviceNumber"),
+            "next_calibration": item.get("meteringDeviceNextCalibrationDate"),
+            "source": "УК (показания передаёт управляющая организация)",
+        }

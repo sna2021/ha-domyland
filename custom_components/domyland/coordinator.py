@@ -55,6 +55,8 @@ class BuildingData:
     notifications: list[dict[str, Any]] = field(default_factory=list)
     # Новости УК из /newsfeed.
     news: list[dict[str, Any]] = field(default_factory=list)
+    # Приборы учёта УК (группа 2 — электричество) из /meteringdata/form.
+    electricity: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -276,6 +278,11 @@ class DomylandCoordinator(DataUpdateCoordinator[DomylandData]):
                 "новостей УК",
                 self.client.get_news_feed,
                 lambda data: setattr(building, "news", data),
+            ),
+            (
+                "счётчика электричества УК",
+                lambda pid, bid: self.client.get_metering_form(pid, bid, 2),
+                lambda data: setattr(building, "electricity", data),
             ),
         ):
             try:
