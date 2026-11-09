@@ -290,3 +290,18 @@ class DomylandApiClient:
             "GET", "/notifications", place_id=place_id, building_id=building_id
         )
         return data["data"].get("items", [])
+
+    async def get_notification_detail(
+        self,
+        place_id: int | str,
+        building_id: int | str,
+        notification_id: int,
+    ) -> dict[str, Any]:
+        """GET /customerNotifications/{id} → полный текст уведомления."""
+        data = await self._request(
+            "GET",
+            f"/customerNotifications/{notification_id}",
+            place_id=place_id,
+            building_id=building_id,
+        )
+        return data["data"]

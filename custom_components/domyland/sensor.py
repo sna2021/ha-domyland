@@ -41,6 +41,14 @@ def _parse_number(text: str | None) -> float | None:
     return float(match.group().replace(",", "."))
 
 
+def _clean_preview(text: str | None) -> str:
+    """Превью уведомления без HTML (УК шлёт разметку) и лишних пробелов."""
+    if not text:
+        return ""
+    cleaned = re.sub(r"<[^>]+>", " ", text)
+    return " ".join(cleaned.split())[:200]
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: DomylandConfigEntry,
@@ -252,8 +260,8 @@ class DomylandPassesSensor(DomylandBuildingEntity, SensorEntity):
 class DomylandNotificationsSensor(DomylandBuildingEntity, SensorEntity):
     """Уведомления ЖКХ из /notifications: состояние — число непрочитанных.
 
-    В атрибутах последние 5 записей (заголовок, превью до 300 символов,
-    дата, прочитано). Тексты приходят с HTML от УК — отдаём как есть.
+    В атрибутах последние 20 записей (заголовок, превью без HTML до 200
+    символов, дата, прочитано) — из них строится лента на дашборде.
     """
 
     _attr_name = "Уведомления ЖКХ"
@@ -279,10 +287,10 @@ class DomylandNotificationsSensor(DomylandBuildingEntity, SensorEntity):
                 {
                     "id": item.get("id"),
                     "title": item.get("title"),
-                    "preview": (item.get("preview") or "")[:300],
+                    "preview": _clean_preview(item.get("preview")),
                     "date": item.get("label"),
                     "is_viewed": item.get("isViewed"),
                 }
-                for item in items[:5]
+                for item in items[:20]
             ]
         }

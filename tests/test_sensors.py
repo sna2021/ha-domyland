@@ -156,3 +156,14 @@ async def test_notifications_sensor_unread_count(make_coordinator, client, refre
     items = sensor.extra_state_attributes["notifications"]
     assert items[0]["title"] == "Долг"
     assert items[1]["is_viewed"] is True
+
+
+def test_clean_preview_strips_html():
+    from custom_components.domyland.sensor import _clean_preview
+
+    assert _clean_preview('<div class="x"><p>Текст<br>строка</p></div>') == (
+        "Текст строка"
+    )
+    assert _clean_preview(None) == ""
+    assert _clean_preview("Просто текст") == "Просто текст"
+    assert len(_clean_preview("x" * 500)) == 200
