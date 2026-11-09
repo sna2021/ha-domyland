@@ -6,10 +6,13 @@ cd "$(dirname "$0")/.."
 
 case "${1:-}" in
   up)
+    mkdir -p dev/config/dashboards
+    cp dev/configuration.yaml dev/config/configuration.yaml
     docker compose -f docker-compose.dev.yml up -d
     echo "HA dev: http://localhost:8124 (первый старт — онбординг, создайте admin-пользователя)"
     ;;
   restart)
+    cp dev/configuration.yaml dev/config/configuration.yaml
     docker compose -f docker-compose.dev.yml restart
     ;;
   logs)

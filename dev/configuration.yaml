@@ -3,6 +3,16 @@ default_config:
 homeassistant:
   time_zone: Europe/Moscow
 
+lovelace:
+  mode: storage
+  dashboards:
+    domyland-dash:
+      title: Домиленд
+      mode: yaml
+      icon: mdi:home-city
+      filename: dashboards/domyland-dash.yaml
+      show_in_sidebar: true
+
 logger:
   default: info
   logs:
