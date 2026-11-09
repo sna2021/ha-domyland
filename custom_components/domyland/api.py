@@ -220,15 +220,32 @@ class DomylandApiClient:
             building_id=building_id,
         )
 
-    # --- Разведка --------------------------------------------------------------
+    # --- Данные помещения ------------------------------------------------------
 
-    async def probe_get(
-        self,
-        path: str,
-        place_id: int | str | None = None,
-        building_id: int | str | None = None,
+    async def get_place_management(
+        self, place_id: int | str, building_id: int | str
     ) -> dict[str, Any]:
-        """GET произвольного эндпоинта (только чтение) для разведки API."""
-        return await self._request(
-            "GET", path, place_id=place_id, building_id=building_id
+        """GET /smarthome/place/management → устройства/сценарии/комнаты.
+
+        Устройства содержат `indicators` с текущими показаниями счётчиков
+        (строки вида «Показание 59.86 м³»).
+        """
+        data = await self._request(
+            "GET",
+            "/smarthome/place/management",
+            place_id=place_id,
+            building_id=building_id,
         )
+        return data["data"]
+
+    async def get_payment_widget(
+        self, place_id: int | str, building_id: int | str
+    ) -> dict[str, Any]:
+        """GET /main-payment-widget → текущие счета ЖКХ (amountText и пр.)."""
+        data = await self._request(
+            "GET",
+            "/main-payment-widget",
+            place_id=place_id,
+            building_id=building_id,
+        )
+        return data["data"]
