@@ -80,6 +80,13 @@ def client(place, door):
         "videoType": "mjpeg",
     }
     remote.get_cameras.return_value = []
+    remote.get_place_management.return_value = {"devices": []}
+    remote.get_payment_widget.return_value = {}
+    remote.get_orders_dispatcher.return_value = []
+    remote.get_guest_passes.return_value = []
+    remote.get_notifications.return_value = []
+    remote.get_news_feed.return_value = []
+    remote.get_metering_form.return_value = {}
     return remote
 
 

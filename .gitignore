@@ -1,2 +1,6 @@
+# Dev-окружение и зависимости
+dev/config/
+dev/secrets.env
+.venv/
 __pycache__/
 *.pyc

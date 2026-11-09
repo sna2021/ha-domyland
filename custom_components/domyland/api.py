@@ -219,3 +219,133 @@ class DomylandApiClient:
             place_id=place_id,
             building_id=building_id,
         )
+
+    # --- Данные помещения ------------------------------------------------------
+
+    async def get_place_management(
+        self, place_id: int | str, building_id: int | str
+    ) -> dict[str, Any]:
+        """GET /smarthome/place/management → устройства/сценарии/комнаты.
+
+        Устройства содержат `indicators` с текущими показаниями счётчиков
+        (строки вида «Показание 59.86 м³»).
+        """
+        data = await self._request(
+            "GET",
+            "/smarthome/place/management",
+            place_id=place_id,
+            building_id=building_id,
+        )
+        return data["data"]
+
+    async def get_payment_widget(
+        self, place_id: int | str, building_id: int | str
+    ) -> dict[str, Any]:
+        """GET /main-payment-widget → текущие счета ЖКХ (amountText и пр.)."""
+        data = await self._request(
+            "GET",
+            "/main-payment-widget",
+            place_id=place_id,
+            building_id=building_id,
+        )
+        return data["data"]
+
+    # --- Заявки и пропуска (чтение) ---------------------------------------------
+
+    async def get_orders_dispatcher(
+        self, place_id: int | str, building_id: int | str
+    ) -> list[dict[str, Any]]:
+        """GET /my-orders/dispatcher → активные заявки УК.
+
+        Ответ — лента из title/card; берём только card со status=active.
+        """
+        data = await self._request(
+            "GET",
+            "/my-orders/dispatcher",
+            place_id=place_id,
+            building_id=building_id,
+        )
+        return [
+            item["attribute"]
+            for item in data["data"].get("items", [])
+            if item.get("type") == "card"
+            and item.get("status") == "active"
+            and item.get("attribute")
+        ]
+
+    async def get_guest_passes(
+        self, place_id: int | str, building_id: int | str
+    ) -> list[dict[str, Any]]:
+        """GET /v2/pass → список разовых гостевых пропусков."""
+        data = await self._request(
+            "GET", "/v2/pass", place_id=place_id, building_id=building_id
+        )
+        return data["data"].get("items", [])
+
+    async def get_notifications(
+        self, place_id: int | str, building_id: int | str
+    ) -> list[dict[str, Any]]:
+        """GET /notifications → лента уведомлений ЖКХ (долги, сроки, новости)."""
+        data = await self._request(
+            "GET", "/notifications", place_id=place_id, building_id=building_id
+        )
+        return data["data"].get("items", [])
+
+    async def get_notification_detail(
+        self,
+        place_id: int | str,
+        building_id: int | str,
+        notification_id: int,
+    ) -> dict[str, Any]:
+        """GET /customerNotifications/{id} → полный текст уведомления."""
+        data = await self._request(
+            "GET",
+            f"/customerNotifications/{notification_id}",
+            place_id=place_id,
+            building_id=building_id,
+        )
+        return data["data"]
+
+    async def get_news_feed(
+        self, place_id: int | str, building_id: int | str
+    ) -> list[dict[str, Any]]:
+        """GET /newsfeed → новости УК (только newsFeedTypeName=news)."""
+        data = await self._request(
+            "GET", "/newsfeed", place_id=place_id, building_id=building_id
+        )
+        return [
+            item
+            for item in data["data"].get("items", [])
+            if item.get("newsFeedTypeName") == "news"
+        ]
+
+    async def get_news_detail(
+        self,
+        place_id: int | str,
+        building_id: int | str,
+        news_id: int,
+    ) -> dict[str, Any]:
+        """GET /news/{id} → полный текст новости (HTML body)."""
+        data = await self._request(
+            "GET", f"/news/{news_id}", place_id=place_id, building_id=building_id
+        )
+        return data["data"]
+
+    async def get_metering_form(
+        self,
+        place_id: int | str,
+        building_id: int | str,
+        group_id: int,
+    ) -> dict[str, Any]:
+        """GET /meteringdata/form?meteringGroupId=N → приборы учёта УК.
+
+        Группы: 1 — вода, 2 — электричество, 3 — отопление. Значения могут
+        быть нулевыми, если УК пока не передаёт показания цифрами.
+        """
+        data = await self._request(
+            "GET",
+            f"/meteringdata/form?meteringGroupId={group_id}",
+            place_id=place_id,
+            building_id=building_id,
+        )
+        return data["data"]

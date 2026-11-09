@@ -2,23 +2,106 @@
 
 from __future__ import annotations
 
+import voluptuous as vol
+from homeassistant.components import websocket_api
+from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.storage import Store
 
-from .api import DomylandApiClient
+from .api import DomylandApiClient, DomylandError
 from .const import (
     CONF_ENABLE_CAMERAS,
     CONF_JWT,
     CONF_YANDEX_TOKEN,
     DEFAULT_ENABLE_CAMERAS,
+    DOMAIN,
     STORAGE_KEY,
     STORAGE_VERSION,
 )
 from .coordinator import DomylandConfigEntry, DomylandCoordinator
+from . import manual
 
-PLATFORMS: list[Platform] = [Platform.LOCK, Platform.CAMERA]
+PLATFORMS: list[Platform] = [Platform.LOCK, Platform.CAMERA, Platform.SENSOR]
+
+
+async def async_setup(hass: HomeAssistant, config: dict) -> bool:
+    """Зарегистрировать websocket-команды интеграции."""
+    websocket_api.async_register_command(hass, _ws_notification_detail)
+    websocket_api.async_register_command(hass, _ws_news_detail)
+    manual.async_register(hass)
+    return True
+
+
+def _first_building(hass: HomeAssistant, building_id: int | None):
+    """Координатор и дом для detail-запросов.
+
+    building_id=None → первый дом первого entry. Явный id ищется по всем
+    entry; если не найден — (None, None), чтобы не отдавать чужой дом.
+    """
+    for entry in hass.config_entries.async_entries(DOMAIN):
+        if entry.state is not ConfigEntryState.LOADED:
+            continue
+        coordinator = entry.runtime_data
+        buildings = coordinator.data.buildings
+        if building_id is None:
+            building = next(iter(buildings.values()), None)
+            if building is not None:
+                return coordinator, building
+        elif building_id in buildings:
+            return coordinator, buildings[building_id]
+    return None, None
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "domyland/notification_detail",
+        vol.Required("notification_id"): int,
+        vol.Optional("building_id"): int,
+    }
+)
+@websocket_api.require_admin
+@websocket_api.async_response
+async def _ws_notification_detail(hass, connection, msg):
+    """Полный текст уведомления по требованию (детальный вид ленты)."""
+    coordinator, building = _first_building(hass, msg.get("building_id"))
+    if building is None:
+        connection.send_error(msg["id"], "no_building", "Нет доступных домов Domyland")
+        return
+    try:
+        detail = await coordinator.client.get_notification_detail(
+            building.place_id, building.building_id, msg["notification_id"]
+        )
+    except DomylandError as err:
+        connection.send_error(msg["id"], "domyland_error", str(err)[:200])
+        return
+    connection.send_result(msg["id"], detail)
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "domyland/news_detail",
+        vol.Required("news_id"): int,
+        vol.Optional("building_id"): int,
+    }
+)
+@websocket_api.require_admin
+@websocket_api.async_response
+async def _ws_news_detail(hass, connection, msg):
+    """Полный текст новости УК по требованию (детальный вид ленты)."""
+    coordinator, building = _first_building(hass, msg.get("building_id"))
+    if building is None:
+        connection.send_error(msg["id"], "no_building", "Нет доступных домов Domyland")
+        return
+    try:
+        detail = await coordinator.client.get_news_detail(
+            building.place_id, building.building_id, msg["news_id"]
+        )
+    except DomylandError as err:
+        connection.send_error(msg["id"], "domyland_error", str(err)[:200])
+        return
+    connection.send_result(msg["id"], detail)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: DomylandConfigEntry) -> bool:

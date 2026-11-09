@@ -1,0 +1,13 @@
+services:
+  homeassistant:
+    image: homeassistant/home-assistant:stable
+    container_name: ha-domyland-dev
+    ports:
+      - "8124:8123"
+    environment:
+      - TZ=Europe/Moscow
+      - PYTHONDONTWRITEBYTECODE=1
+    volumes:
+      - ./dev/config:/config
+      - ./custom_components/domyland:/config/custom_components/domyland:ro
+    restart: "no"

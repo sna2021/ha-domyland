@@ -49,6 +49,20 @@ class BuildingData:
     cameras: dict[int, dict[str, Any]] = field(default_factory=dict)
     # Встроенные камеры домофонов (door_id → детали с полем `video`).
     door_cameras: dict[int, dict[str, Any]] = field(default_factory=dict)
+    # Устройства умного дома из /smarthome/place/management (с indicators).
+    smart_devices: list[dict[str, Any]] = field(default_factory=list)
+    # Виджет текущих счетов ЖКХ из /main-payment-widget.
+    payment_widget: dict[str, Any] = field(default_factory=dict)
+    # Активные заявки УК из /my-orders/dispatcher.
+    orders: list[dict[str, Any]] = field(default_factory=list)
+    # Разовые гостевые пропуска из /v2/pass.
+    guest_passes: list[dict[str, Any]] = field(default_factory=list)
+    # Лента уведомлений ЖКХ из /notifications.
+    notifications: list[dict[str, Any]] = field(default_factory=list)
+    # Новости УК из /newsfeed.
+    news: list[dict[str, Any]] = field(default_factory=list)
+    # Приборы учёта УК (группа 2 — электричество) из /meteringdata/form.
+    electricity: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -242,10 +256,66 @@ class DomylandCoordinator(DataUpdateCoordinator[DomylandData]):
                 await self._async_update_doors(building)
                 if self.enable_cameras:
                     await self._async_update_cameras(building)
+                await self._async_update_place_data(building)
         except DomylandAuthError as err:
             raise ConfigEntryAuthFailed(err) from err
         await self._async_save_inventory()
         return DomylandData(buildings=buildings)
+
+    async def _async_update_place_data(self, building: BuildingData) -> None:
+        """Счётчики, счета ЖКХ, заявки, пропуска, уведомления; не фатально."""
+        for kind, fetch, apply in (
+            (
+                "устройств умного дома",
+                self.client.get_place_management,
+                lambda data: setattr(
+                    building, "smart_devices", data.get("devices", [])
+                ),
+            ),
+            (
+                "виджета счетов",
+                self.client.get_payment_widget,
+                lambda data: setattr(building, "payment_widget", data),
+            ),
+            (
+                "заявок УК",
+                self.client.get_orders_dispatcher,
+                lambda data: setattr(building, "orders", data),
+            ),
+            (
+                "гостевых пропусков",
+                self.client.get_guest_passes,
+                lambda data: setattr(building, "guest_passes", data),
+            ),
+            (
+                "уведомлений ЖКХ",
+                self.client.get_notifications,
+                lambda data: setattr(building, "notifications", data),
+            ),
+            (
+                "новостей УК",
+                self.client.get_news_feed,
+                lambda data: setattr(building, "news", data),
+            ),
+            (
+                "счётчика электричества УК",
+                lambda pid, bid: self.client.get_metering_form(pid, bid, 2),
+                lambda data: setattr(building, "electricity", data),
+            ),
+        ):
+            try:
+                data = await fetch(building.place_id, building.building_id)
+            except DomylandAuthError:
+                raise
+            except DomylandError as err:
+                _LOGGER.warning(
+                    "Не удалось получить %s дома %s: %s",
+                    kind,
+                    building.building_title,
+                    err,
+                )
+                continue
+            apply(data)
 
     async def _async_update_doors(self, building: BuildingData) -> None:
         known = self._known(building.building_id)["doors"]
