@@ -1,0 +1,9 @@
+default_config:
+
+homeassistant:
+  time_zone: Europe/Moscow
+
+logger:
+  default: info
+  logs:
+    custom_components.domyland: debug
