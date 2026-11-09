@@ -12,7 +12,18 @@ class DomylandFeedCard extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
-    this._render();
+    const sig = JSON.stringify([
+      this._entity ? this._entity.state : null,
+      this._items,
+      this._selected,
+      this._detail,
+      this._detailLoading,
+      this._page,
+    ]);
+    if (sig !== this._sig) {
+      this._sig = sig;
+      this._render();
+    }
   }
 
   getCardSize() {
@@ -211,10 +222,12 @@ class DomylandFeedCard extends HTMLElement {
         if (ev.target === overlay) this._closeDetail();
       });
       this.querySelector(".close").addEventListener("click", () => this._closeDetail());
-      this._escHandler = (ev) => {
-        if (ev.key === "Escape") this._closeDetail();
-      };
-      document.addEventListener("keydown", this._escHandler);
+      if (!this._escHandler) {
+        this._escHandler = (ev) => {
+          if (ev.key === "Escape") this._closeDetail();
+        };
+        document.addEventListener("keydown", this._escHandler);
+      }
     } else if (this._escHandler) {
       document.removeEventListener("keydown", this._escHandler);
       this._escHandler = null;

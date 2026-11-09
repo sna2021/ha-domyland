@@ -8,7 +8,8 @@ class DomylandMetersCard extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
-    if (this._readings === null) {
+    if (this._readings === null && !this._loading) {
+      this._loading = true;
       this._load();
       return;
     }
@@ -26,6 +27,8 @@ class DomylandMetersCard extends HTMLElement {
       });
     } catch (err) {
       this._readings = {};
+    } finally {
+      this._loading = false;
     }
     this._render();
   }

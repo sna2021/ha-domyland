@@ -39,6 +39,7 @@ async def async_save_reading(
 
 
 @websocket_api.websocket_command({"type": "domyland/manual_readings/list"})
+@websocket_api.require_admin
 @websocket_api.async_response
 async def ws_list(hass, connection, msg):
     """Все ручные показания: {ключ счётчика: {value, updated_at}}."""
@@ -54,6 +55,7 @@ async def ws_list(hass, connection, msg):
         ),
     }
 )
+@websocket_api.require_admin
 @websocket_api.async_response
 async def ws_set(hass, connection, msg):
     """Сохранить ручное показание по ключу счётчика."""

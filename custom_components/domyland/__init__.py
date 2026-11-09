@@ -35,15 +35,22 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
 
 def _first_building(hass: HomeAssistant, building_id: int | None):
-    """Координатор и дом для detail-запросов (по building_id или первый)."""
+    """Координатор и дом для detail-запросов.
+
+    building_id=None → первый дом первого entry. Явный id ищется по всем
+    entry; если не найден — (None, None), чтобы не отдавать чужой дом.
+    """
     for entry in hass.config_entries.async_entries(DOMAIN):
         if entry.state is not ConfigEntryState.LOADED:
             continue
         coordinator = entry.runtime_data
         buildings = coordinator.data.buildings
-        building = buildings.get(building_id) or next(iter(buildings.values()), None)
-        if building is not None:
-            return coordinator, building
+        if building_id is None:
+            building = next(iter(buildings.values()), None)
+            if building is not None:
+                return coordinator, building
+        elif building_id in buildings:
+            return coordinator, buildings[building_id]
     return None, None
 
 
@@ -54,6 +61,7 @@ def _first_building(hass: HomeAssistant, building_id: int | None):
         vol.Optional("building_id"): int,
     }
 )
+@websocket_api.require_admin
 @websocket_api.async_response
 async def _ws_notification_detail(hass, connection, msg):
     """Полный текст уведомления по требованию (детальный вид ленты)."""
@@ -78,6 +86,7 @@ async def _ws_notification_detail(hass, connection, msg):
         vol.Optional("building_id"): int,
     }
 )
+@websocket_api.require_admin
 @websocket_api.async_response
 async def _ws_news_detail(hass, connection, msg):
     """Полный текст новости УК по требованию (детальный вид ленты)."""
