@@ -85,6 +85,7 @@ def client(place, door):
     remote.get_orders_dispatcher.return_value = []
     remote.get_guest_passes.return_value = []
     remote.get_notifications.return_value = []
+    remote.get_news_feed.return_value = []
     return remote
 
 

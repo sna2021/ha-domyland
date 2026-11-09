@@ -305,3 +305,28 @@ class DomylandApiClient:
             building_id=building_id,
         )
         return data["data"]
+
+    async def get_news_feed(
+        self, place_id: int | str, building_id: int | str
+    ) -> list[dict[str, Any]]:
+        """GET /newsfeed → новости УК (только newsFeedTypeName=news)."""
+        data = await self._request(
+            "GET", "/newsfeed", place_id=place_id, building_id=building_id
+        )
+        return [
+            item
+            for item in data["data"].get("items", [])
+            if item.get("newsFeedTypeName") == "news"
+        ]
+
+    async def get_news_detail(
+        self,
+        place_id: int | str,
+        building_id: int | str,
+        news_id: int,
+    ) -> dict[str, Any]:
+        """GET /news/{id} → полный текст новости (HTML body)."""
+        data = await self._request(
+            "GET", f"/news/{news_id}", place_id=place_id, building_id=building_id
+        )
+        return data["data"]

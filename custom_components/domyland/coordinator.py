@@ -53,6 +53,8 @@ class BuildingData:
     guest_passes: list[dict[str, Any]] = field(default_factory=list)
     # Лента уведомлений ЖКХ из /notifications.
     notifications: list[dict[str, Any]] = field(default_factory=list)
+    # Новости УК из /newsfeed.
+    news: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass
@@ -269,6 +271,11 @@ class DomylandCoordinator(DataUpdateCoordinator[DomylandData]):
                 "уведомлений ЖКХ",
                 self.client.get_notifications,
                 lambda data: setattr(building, "notifications", data),
+            ),
+            (
+                "новостей УК",
+                self.client.get_news_feed,
+                lambda data: setattr(building, "news", data),
             ),
         ):
             try:

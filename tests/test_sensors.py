@@ -167,3 +167,20 @@ def test_clean_preview_strips_html():
     assert _clean_preview(None) == ""
     assert _clean_preview("Просто текст") == "Просто текст"
     assert len(_clean_preview("x" * 500)) == 200
+
+
+async def test_news_sensor_uses_news_attribute(make_coordinator, client, refresh):
+    client.get_news_feed.return_value = [
+        {"id": 121028, "title": "Новость УК", "preview": "Текст",
+         "label": "3 ноября", "isViewed": False},
+    ]
+    coordinator = await make_coordinator()
+    await refresh(coordinator)
+
+    from custom_components.domyland.sensor import DomylandNewsSensor
+
+    sensor = DomylandNewsSensor(coordinator, 11)
+    assert sensor.native_value == 1
+    items = sensor.extra_state_attributes["news"]
+    assert items[0]["id"] == 121028
+    assert items[0]["title"] == "Новость УК"

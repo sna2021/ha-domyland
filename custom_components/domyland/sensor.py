@@ -84,6 +84,9 @@ async def async_setup_entry(
                 entities.append(
                     DomylandNotificationsSensor(coordinator, building_id)
                 )
+            if ("news", building_id, 0) not in known:
+                known.add(("news", building_id, 0))
+                entities.append(DomylandNewsSensor(coordinator, building_id))
         if entities:
             async_add_entities(entities)
 
@@ -265,6 +268,8 @@ class DomylandNotificationsSensor(DomylandBuildingEntity, SensorEntity):
     """
 
     _attr_name = "Уведомления ЖКХ"
+    _feed_attr = "notifications"
+    _attr_key = "notifications"
 
     def __init__(
         self, coordinator: DomylandCoordinator, building_id: int
@@ -275,15 +280,15 @@ class DomylandNotificationsSensor(DomylandBuildingEntity, SensorEntity):
     @property
     def native_value(self) -> int:
         building = self._building
-        items = building.notifications if building else []
+        items = getattr(building, self._feed_attr) if building else []
         return sum(1 for item in items if not item.get("isViewed"))
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         building = self._building
-        items = building.notifications if building else []
+        items = getattr(building, self._feed_attr) if building else []
         return {
-            "notifications": [
+            self._attr_key: [
                 {
                     "id": item.get("id"),
                     "title": item.get("title"),
@@ -294,3 +299,17 @@ class DomylandNotificationsSensor(DomylandBuildingEntity, SensorEntity):
                 for item in items[:20]
             ]
         }
+
+
+class DomylandNewsSensor(DomylandNotificationsSensor):
+    """Новости УК из /newsfeed: тот же формат, что у уведомлений."""
+
+    _attr_name = "Новости ЖК"
+    _feed_attr = "news"
+    _attr_key = "news"
+
+    def __init__(
+        self, coordinator: DomylandCoordinator, building_id: int
+    ) -> None:
+        super().__init__(coordinator, building_id)
+        self._attr_unique_id = f"{DOMAIN}_news_{building_id}"
