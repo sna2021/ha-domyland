@@ -53,3 +53,7 @@ STORAGE_KEY = f"{DOMAIN}.{{entry_id}}.inventory"
 REQUEST_TIMEOUT = 30
 
 MANUFACTURER = "Domyland / UJIN"
+
+# Разовый пропуск: тип «человек», подтип «гость» (id из customer-api).
+GUEST_TYPE_ID = 1
+GUEST_SUBTYPE_ID = 1

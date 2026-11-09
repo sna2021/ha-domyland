@@ -90,3 +90,50 @@ async def test_invoice_sensor_value_and_no_payment_tokens(
     }
     blob = str(sensor.extra_state_attributes)
     assert "SECRET" not in blob
+
+
+async def test_orders_sensor_active_only(make_coordinator, client, refresh):
+    client.get_orders_dispatcher.return_value = [
+        {
+            "id": 5998086,
+            "title": "Гарантия",
+            "orderStatusTitle": "В работе",
+            "createdAtFormatted": "29 июля в 13:37",
+            "hasStatusUpdate": True,
+            "unreadCustomerMessagesCount": 0,
+        }
+    ]
+    coordinator = await make_coordinator()
+    await refresh(coordinator)
+
+    from custom_components.domyland.sensor import DomylandOrdersSensor
+
+    sensor = DomylandOrdersSensor(coordinator, 11)
+    assert sensor.native_value == 1
+    attrs = sensor.extra_state_attributes
+    assert attrs["orders"][0]["title"] == "Гарантия"
+    assert attrs["orders"][0]["status"] == "В работе"
+    assert attrs["has_status_updates"] is True
+
+
+async def test_orders_sensor_empty(make_coordinator, client, refresh):
+    coordinator = await make_coordinator()
+    await refresh(coordinator)
+
+    from custom_components.domyland.sensor import DomylandOrdersSensor
+
+    sensor = DomylandOrdersSensor(coordinator, 11)
+    assert sensor.native_value == 0
+    assert sensor.extra_state_attributes["has_status_updates"] is False
+
+
+async def test_passes_sensor_counts(make_coordinator, client, refresh):
+    client.get_guest_passes.return_value = [{"id": 1, "title": "Гость"}]
+    coordinator = await make_coordinator()
+    await refresh(coordinator)
+
+    from custom_components.domyland.sensor import DomylandPassesSensor
+
+    sensor = DomylandPassesSensor(coordinator, 11)
+    assert sensor.native_value == 1
+    assert sensor.extra_state_attributes["passes"][0]["title"] == "Гость"

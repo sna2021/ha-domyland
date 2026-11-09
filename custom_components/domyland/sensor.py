@@ -65,6 +65,12 @@ async def async_setup_entry(
             if building.payment_widget and ("invoice", building_id, 0) not in known:
                 known.add(("invoice", building_id, 0))
                 entities.append(DomylandInvoiceSensor(coordinator, building_id))
+            if ("orders", building_id, 0) not in known:
+                known.add(("orders", building_id, 0))
+                entities.append(DomylandOrdersSensor(coordinator, building_id))
+            if ("passes", building_id, 0) not in known:
+                known.add(("passes", building_id, 0))
+                entities.append(DomylandPassesSensor(coordinator, building_id))
         if entities:
             async_add_entities(entities)
 
@@ -175,3 +181,64 @@ class DomylandInvoiceSensor(DomylandBuildingEntity, SensorEntity):
             "invoices_count": self._widget.get("invoicesCount"),
             "title": self._widget.get("title"),
         }
+
+
+class DomylandOrdersSensor(DomylandBuildingEntity, SensorEntity):
+    """Активные заявки УК из /my-orders/dispatcher (только card+active)."""
+
+    _attr_name = "Заявки УК"
+
+    def __init__(
+        self, coordinator: DomylandCoordinator, building_id: int
+    ) -> None:
+        super().__init__(coordinator, building_id)
+        self._attr_unique_id = f"{DOMAIN}_orders_{building_id}"
+
+    @property
+    def native_value(self) -> int:
+        building = self._building
+        return len(building.orders) if building else 0
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        building = self._building
+        orders = building.orders if building else []
+        return {
+            "orders": [
+                {
+                    "id": order.get("id"),
+                    "title": order.get("title"),
+                    "status": order.get("orderStatusTitle"),
+                    "created_at": order.get("createdAtFormatted"),
+                    "has_status_update": order.get("hasStatusUpdate"),
+                    "unread_messages": order.get("unreadCustomerMessagesCount"),
+                }
+                for order in orders[:10]
+            ],
+            "has_status_updates": any(
+                order.get("hasStatusUpdate") for order in orders
+            ),
+        }
+
+
+class DomylandPassesSensor(DomylandBuildingEntity, SensorEntity):
+    """Разовые гостевые пропуска из /v2/pass (сырой список, до 10 записей)."""
+
+    _attr_name = "Гостевые пропуска"
+
+    def __init__(
+        self, coordinator: DomylandCoordinator, building_id: int
+    ) -> None:
+        super().__init__(coordinator, building_id)
+        self._attr_unique_id = f"{DOMAIN}_passes_{building_id}"
+
+    @property
+    def native_value(self) -> int:
+        building = self._building
+        return len(building.guest_passes) if building else 0
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        building = self._building
+        passes = building.guest_passes if building else []
+        return {"passes": passes[:10]}

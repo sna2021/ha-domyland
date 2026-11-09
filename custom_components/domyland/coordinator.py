@@ -47,6 +47,10 @@ class BuildingData:
     smart_devices: list[dict[str, Any]] = field(default_factory=list)
     # Виджет текущих счетов ЖКХ из /main-payment-widget.
     payment_widget: dict[str, Any] = field(default_factory=dict)
+    # Активные заявки УК из /my-orders/dispatcher.
+    orders: list[dict[str, Any]] = field(default_factory=list)
+    # Разовые гостевые пропуска из /v2/pass.
+    guest_passes: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass
@@ -248,6 +252,16 @@ class DomylandCoordinator(DataUpdateCoordinator[DomylandData]):
                 "виджета счетов",
                 self.client.get_payment_widget,
                 lambda data: setattr(building, "payment_widget", data),
+            ),
+            (
+                "заявок УК",
+                self.client.get_orders_dispatcher,
+                lambda data: setattr(building, "orders", data),
+            ),
+            (
+                "гостевых пропусков",
+                self.client.get_guest_passes,
+                lambda data: setattr(building, "guest_passes", data),
             ),
         ):
             try:

@@ -82,6 +82,8 @@ def client(place, door):
     remote.get_cameras.return_value = []
     remote.get_place_management.return_value = {"devices": []}
     remote.get_payment_widget.return_value = {}
+    remote.get_orders_dispatcher.return_value = []
+    remote.get_guest_passes.return_value = []
     return remote
 
 

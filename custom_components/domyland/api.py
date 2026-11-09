@@ -249,3 +249,35 @@ class DomylandApiClient:
             building_id=building_id,
         )
         return data["data"]
+
+    # --- Заявки и пропуска (чтение) ---------------------------------------------
+
+    async def get_orders_dispatcher(
+        self, place_id: int | str, building_id: int | str
+    ) -> list[dict[str, Any]]:
+        """GET /my-orders/dispatcher → активные заявки УК.
+
+        Ответ — лента из title/card; берём только card со status=active.
+        """
+        data = await self._request(
+            "GET",
+            "/my-orders/dispatcher",
+            place_id=place_id,
+            building_id=building_id,
+        )
+        return [
+            item["attribute"]
+            for item in data["data"].get("items", [])
+            if item.get("type") == "card"
+            and item.get("status") == "active"
+            and item.get("attribute")
+        ]
+
+    async def get_guest_passes(
+        self, place_id: int | str, building_id: int | str
+    ) -> list[dict[str, Any]]:
+        """GET /v2/pass → список разовых гостевых пропусков."""
+        data = await self._request(
+            "GET", "/v2/pass", place_id=place_id, building_id=building_id
+        )
+        return data["data"].get("items", [])
