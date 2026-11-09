@@ -23,7 +23,13 @@ from .api import (
     DomylandError,
     async_get_mjpeg_frame,
 )
-from .const import DOMAIN, STORAGE_KEY, STORAGE_VERSION, UPDATE_INTERVAL
+from .const import (
+    DOMAIN,
+    PLACES_FAILURE_TOLERANCE,
+    STORAGE_KEY,
+    STORAGE_VERSION,
+    UPDATE_INTERVAL,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -86,6 +92,7 @@ class DomylandCoordinator(DataUpdateCoordinator[DomylandData]):
         )
         self._entry_id = entry.entry_id
         self._requests = asyncio.Semaphore(5)
+        self._places_failures = 0
 
     async def async_initialize(self) -> None:
         """Загрузить источники и восстановить ID дверей прежних установок."""
@@ -201,7 +208,18 @@ class DomylandCoordinator(DataUpdateCoordinator[DomylandData]):
         except DomylandAuthError as err:
             raise ConfigEntryAuthFailed(err) from err
         except DomylandError as err:
-            raise UpdateFailed(str(err)) from err
+            if self.data is None or self._places_failures >= PLACES_FAILURE_TOLERANCE:
+                raise UpdateFailed(str(err)) from err
+            self._places_failures += 1
+            _LOGGER.warning(
+                "Domyland places недоступны (%s), оставляем данные прошлого опроса "
+                "(сбой %s/%s подряд)",
+                err,
+                self._places_failures,
+                PLACES_FAILURE_TOLERANCE,
+            )
+            return self.data
+        self._places_failures = 0
 
         buildings: dict[int, BuildingData] = {}
         for place in places:
