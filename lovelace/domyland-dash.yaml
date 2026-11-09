@@ -1,0 +1,87 @@
+title: Домиленд
+views:
+  - title: Домиленд
+    path: '0'
+    icon: mdi:home-city
+    type: sections
+    max_columns: 2
+    sections:
+      - title: Показания и счета
+        cards:
+          - type: entities
+            title: Счётчики и ЖКХ
+            entities:
+              - entity: sensor.ulitsa_cheliuskina_dom_10_schetchik_kholodnoi_vody
+                name: Холодная вода
+              - entity: sensor.ulitsa_cheliuskina_dom_10_schetchik_goriachei_vody
+                name: Горячая вода
+              - entity: sensor.ulitsa_cheliuskina_dom_10_sanext_mono_cu
+                name: Тепло (Гкал)
+              - entity: sensor.ulitsa_cheliuskina_dom_10_schet_zhkkh
+                name: Счёт ЖКХ
+          - type: custom:domyland-meters-card
+            title: "Счётчики: УК и ручной ввод"
+            meters:
+              - key: meter_35858
+                name: Холодная вода
+                entity: sensor.ulitsa_cheliuskina_dom_10_schetchik_kholodnoi_vody
+              - key: meter_35859
+                name: Горячая вода
+                entity: sensor.ulitsa_cheliuskina_dom_10_schetchik_goriachei_vody
+              - key: meter_35860
+                name: Тепло (Гкал)
+                entity: sensor.ulitsa_cheliuskina_dom_10_sanext_mono_cu
+              - key: ukmeter_3001813_t1
+                name: Электричество · Пик/Т1
+                entity: sensor.ulitsa_cheliuskina_dom_10_elektrichestvo_pik_noch_pik_t1
+              - key: ukmeter_3001813_t2
+                name: Электричество · Ночь/Т2
+                entity: sensor.ulitsa_cheliuskina_dom_10_elektrichestvo_pik_noch_noch_t2
+
+      - title: Заявки и пропуска
+        cards:
+          - type: entities
+            title: УК
+            entities:
+              - entity: sensor.ulitsa_cheliuskina_dom_10_zaiavki_uk
+                name: Активные заявки
+              - entity: sensor.ulitsa_cheliuskina_dom_10_gostevye_propuska
+                name: Гостевые пропуска
+          - type: markdown
+            title: Активные заявки
+            content: >-
+              {% set orders = state_attr('sensor.ulitsa_cheliuskina_dom_10_zaiavki_uk', 'orders') or [] %}
+              {% if not orders %}Нет активных заявок{% endif %}
+              {% for o in orders %}
+              **{{ o.title }}** — {{ o.status }}
+              {{ o.created_at }}{% if o.has_status_update %} — есть обновление{% endif %}
+
+              {% endfor %}
+
+      - title: Уведомления ЖКХ
+        cards:
+          - type: custom:domyland-feed-card
+            entity: sensor.ulitsa_cheliuskina_dom_10_uvedomleniia_zhkkh
+            title: Лента уведомлений ЖКХ
+            page_size: 5
+
+      - title: Новости ЖК
+        cards:
+          - type: custom:domyland-feed-card
+            entity: sensor.ulitsa_cheliuskina_dom_10_novosti_zhk
+            source: news
+            title: Новости УК
+            page_size: 5
+
+      - title: Доступ
+        cards:
+          - type: entities
+            title: Двери и калитки
+            entities:
+              - entity: lock.ulitsa_cheliuskina_dom_10_sektsiia_5_glavnyi_vkhod
+              - entity: lock.ulitsa_cheliuskina_dom_10_sektsiia_11_glavnyi_vkhod
+              - entity: lock.ulitsa_cheliuskina_dom_10_kalitka_4_5_sektsii
+              - entity: lock.ulitsa_cheliuskina_dom_10_kalitka_8_9_sektsii
+              - entity: lock.ulitsa_cheliuskina_dom_10_kalitka_13_14_sektsii
+              - entity: lock.ulitsa_cheliuskina_dom_10_kalitka_15_16_sektsii
+              - entity: lock.ulitsa_cheliuskina_dom_10_kalitka_20_21_sektsii
