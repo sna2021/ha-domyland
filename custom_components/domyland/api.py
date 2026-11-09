@@ -219,3 +219,16 @@ class DomylandApiClient:
             place_id=place_id,
             building_id=building_id,
         )
+
+    # --- Разведка --------------------------------------------------------------
+
+    async def probe_get(
+        self,
+        path: str,
+        place_id: int | str | None = None,
+        building_id: int | str | None = None,
+    ) -> dict[str, Any]:
+        """GET произвольного эндпоинта (только чтение) для разведки API."""
+        return await self._request(
+            "GET", path, place_id=place_id, building_id=building_id
+        )
