@@ -11,7 +11,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.domyland.api import DomylandAuthError, DomylandError
 from custom_components.domyland.camera import DomylandCamera, DomylandDoorCamera
-from custom_components.domyland.const import DOMAIN
+from custom_components.domyland.const import DOMAIN, PLACES_FAILURE_TOLERANCE
 from custom_components.domyland.lock import DomylandDoorLock
 
 
@@ -316,3 +316,46 @@ async def test_one_auth_failure_among_parallel_door_details_is_not_swallowed(
     with pytest.raises(ConfigEntryAuthFailed):
         await coordinator._async_update_data()
     assert {call.args[0] for call in client.get_access_detail.await_args_list} == {21, 22}
+
+
+async def test_places_outage_serves_last_data_until_tolerance_exceeded(
+    make_coordinator, refresh, client, door, camera
+):
+    client.get_access_points.return_value = [door]
+    client.get_cameras.return_value = [camera]
+    coordinator = await make_coordinator()
+    initial = await refresh(coordinator)
+    lock = DomylandDoorLock(coordinator, 11, 21)
+    cam = DomylandCamera(coordinator, 11, 31)
+    assert lock.available and cam.available
+
+    client.get_places.side_effect = DomylandError("synthetic places outage")
+    for _ in range(PLACES_FAILURE_TOLERANCE):
+        current = await refresh(coordinator)
+        assert current == initial
+        assert lock.available and cam.available
+
+    with pytest.raises(UpdateFailed, match="synthetic places outage"):
+        await coordinator._async_update_data()
+
+
+async def test_places_failure_counter_resets_after_successful_poll(
+    make_coordinator, refresh, client, door
+):
+    client.get_access_points.return_value = [door]
+    coordinator = await make_coordinator()
+    await refresh(coordinator)
+
+    client.get_places.side_effect = DomylandError("synthetic places outage")
+    await refresh(coordinator)
+    client.get_places.side_effect = None
+    await refresh(coordinator)
+
+    client.get_places.side_effect = DomylandError("synthetic places outage")
+    for _ in range(PLACES_FAILURE_TOLERANCE):
+        current = await refresh(coordinator)
+        assert DomylandDoorLock(coordinator, 11, 21).available
+    assert set(current[11].doors) == {21}
+
+    with pytest.raises(UpdateFailed, match="synthetic places outage"):
+        await coordinator._async_update_data()

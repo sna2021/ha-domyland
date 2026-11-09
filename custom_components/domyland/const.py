@@ -45,6 +45,12 @@ DEFAULT_ENABLE_CAMERAS = True
 # и чтобы подтягивались новые/убранные двери.
 UPDATE_INTERVAL = timedelta(minutes=5)
 
+# Сколько подряд сетевых сбоев get_places терпим, продолжая отдавать данные
+# прошлого успешного опроса. Единичный сбой не должен гасить все сущности на
+# целый UPDATE_INTERVAL; при затяжном сбое сущности честно станут unavailable.
+# Окно ограничено ещё и тем, что подписанные streamURL со временем протухают.
+PLACES_FAILURE_TOLERANCE = 2
+
 # Личный архив известных источников; не содержит токенов авторизации.
 STORAGE_VERSION = 1
 STORAGE_KEY = f"{DOMAIN}.{{entry_id}}.inventory"
