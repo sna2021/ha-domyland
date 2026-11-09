@@ -137,3 +137,22 @@ async def test_passes_sensor_counts(make_coordinator, client, refresh):
     sensor = DomylandPassesSensor(coordinator, 11)
     assert sensor.native_value == 1
     assert sensor.extra_state_attributes["passes"][0]["title"] == "Гость"
+
+
+async def test_notifications_sensor_unread_count(make_coordinator, client, refresh):
+    client.get_notifications.return_value = [
+        {"id": 1, "title": "Долг", "preview": "Вы в списке должников",
+         "label": "31 октября", "isViewed": False},
+        {"id": 2, "title": "Новость", "preview": "Текст",
+         "label": "1 октября", "isViewed": True},
+    ]
+    coordinator = await make_coordinator()
+    await refresh(coordinator)
+
+    from custom_components.domyland.sensor import DomylandNotificationsSensor
+
+    sensor = DomylandNotificationsSensor(coordinator, 11)
+    assert sensor.native_value == 1
+    items = sensor.extra_state_attributes["notifications"]
+    assert items[0]["title"] == "Долг"
+    assert items[1]["is_viewed"] is True

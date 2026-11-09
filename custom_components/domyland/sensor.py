@@ -1,4 +1,4 @@
-"""Сенсоры Domyland: показания умных счётчиков и текущий счёт ЖКХ."""
+"""Сенсоры Domyland: счётчики, счёт ЖКХ, заявки УК, пропуска, уведомления."""
 
 from __future__ import annotations
 
@@ -71,6 +71,11 @@ async def async_setup_entry(
             if ("passes", building_id, 0) not in known:
                 known.add(("passes", building_id, 0))
                 entities.append(DomylandPassesSensor(coordinator, building_id))
+            if ("notifications", building_id, 0) not in known:
+                known.add(("notifications", building_id, 0))
+                entities.append(
+                    DomylandNotificationsSensor(coordinator, building_id)
+                )
         if entities:
             async_add_entities(entities)
 
@@ -242,3 +247,42 @@ class DomylandPassesSensor(DomylandBuildingEntity, SensorEntity):
         building = self._building
         passes = building.guest_passes if building else []
         return {"passes": passes[:10]}
+
+
+class DomylandNotificationsSensor(DomylandBuildingEntity, SensorEntity):
+    """Уведомления ЖКХ из /notifications: состояние — число непрочитанных.
+
+    В атрибутах последние 5 записей (заголовок, превью до 300 символов,
+    дата, прочитано). Тексты приходят с HTML от УК — отдаём как есть.
+    """
+
+    _attr_name = "Уведомления ЖКХ"
+
+    def __init__(
+        self, coordinator: DomylandCoordinator, building_id: int
+    ) -> None:
+        super().__init__(coordinator, building_id)
+        self._attr_unique_id = f"{DOMAIN}_notifications_{building_id}"
+
+    @property
+    def native_value(self) -> int:
+        building = self._building
+        items = building.notifications if building else []
+        return sum(1 for item in items if not item.get("isViewed"))
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        building = self._building
+        items = building.notifications if building else []
+        return {
+            "notifications": [
+                {
+                    "id": item.get("id"),
+                    "title": item.get("title"),
+                    "preview": (item.get("preview") or "")[:300],
+                    "date": item.get("label"),
+                    "is_viewed": item.get("isViewed"),
+                }
+                for item in items[:5]
+            ]
+        }

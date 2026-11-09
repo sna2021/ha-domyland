@@ -51,6 +51,8 @@ class BuildingData:
     orders: list[dict[str, Any]] = field(default_factory=list)
     # Разовые гостевые пропуска из /v2/pass.
     guest_passes: list[dict[str, Any]] = field(default_factory=list)
+    # Лента уведомлений ЖКХ из /notifications.
+    notifications: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass
@@ -239,7 +241,7 @@ class DomylandCoordinator(DataUpdateCoordinator[DomylandData]):
         return DomylandData(buildings=buildings)
 
     async def _async_update_place_data(self, building: BuildingData) -> None:
-        """Счётчики умного дома и виджет счетов ЖКХ; ошибки не фатальны."""
+        """Счётчики, счета ЖКХ, заявки, пропуска, уведомления; не фатально."""
         for kind, fetch, apply in (
             (
                 "устройств умного дома",
@@ -262,6 +264,11 @@ class DomylandCoordinator(DataUpdateCoordinator[DomylandData]):
                 "гостевых пропусков",
                 self.client.get_guest_passes,
                 lambda data: setattr(building, "guest_passes", data),
+            ),
+            (
+                "уведомлений ЖКХ",
+                self.client.get_notifications,
+                lambda data: setattr(building, "notifications", data),
             ),
         ):
             try:
