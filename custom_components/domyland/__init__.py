@@ -21,6 +21,7 @@ from .const import (
     STORAGE_VERSION,
 )
 from .coordinator import DomylandConfigEntry, DomylandCoordinator
+from . import manual
 
 PLATFORMS: list[Platform] = [Platform.LOCK, Platform.CAMERA, Platform.SENSOR]
 
@@ -29,6 +30,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Зарегистрировать websocket-команды интеграции."""
     websocket_api.async_register_command(hass, _ws_notification_detail)
     websocket_api.async_register_command(hass, _ws_news_detail)
+    manual.async_register(hass)
     return True
 
 
